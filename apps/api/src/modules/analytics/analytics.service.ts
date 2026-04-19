@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const JOINT_COUNTRY_COORDINATES: Record<string, { x: number; y: number }> = {
@@ -8,6 +9,42 @@ const JOINT_COUNTRY_COORDINATES: Record<string, { x: number; y: number }> = {
   China: { x: 655, y: 152 },
   Malaysia: { x: 629, y: 226 },
 };
+
+type PublicationMapRecord = Prisma.PublicationGetPayload<{
+  select: {
+    id: true;
+    title: true;
+    slug: true;
+    abstract: true;
+    jointCountry: true;
+    publicationType: true;
+    year: true;
+    publicationDate: true;
+  };
+}>;
+
+type ProjectMapRecord = Prisma.ProjectGetPayload<{
+  select: {
+    id: true;
+    title: true;
+    slug: true;
+    abstract: true;
+    jointCountry: true;
+    lifecycleStatus: true;
+    createdAt: true;
+  };
+}>;
+
+type GroupMapRecord = Prisma.ResearchGroupGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    slug: true;
+    description: true;
+    jointCountry: true;
+    createdAt: true;
+  };
+}>;
 
 @Injectable()
 export class AnalyticsService {
@@ -199,11 +236,14 @@ export class AnalyticsService {
 
     return [
       ...publications
-        .filter((item) => item.jointCountry && JOINT_COUNTRY_COORDINATES[item.jointCountry])
-        .map((item) => ({
+        .filter(
+          (item: PublicationMapRecord): item is PublicationMapRecord & { jointCountry: string } =>
+            Boolean(item.jointCountry && JOINT_COUNTRY_COORDINATES[item.jointCountry]),
+        )
+        .map((item: PublicationMapRecord & { jointCountry: string }) => ({
           id: `publication-${item.id}`,
-          country: item.jointCountry as string,
-          ...JOINT_COUNTRY_COORDINATES[item.jointCountry as string],
+          country: item.jointCountry,
+          ...JOINT_COUNTRY_COORDINATES[item.jointCountry],
           articleTitle: item.title,
           href: `/publications/${item.slug}`,
           articleType: item.publicationType,
@@ -215,11 +255,14 @@ export class AnalyticsService {
           summary: item.abstract ?? 'Joint publication collaboration record.',
         })),
       ...projects
-        .filter((item) => item.jointCountry && JOINT_COUNTRY_COORDINATES[item.jointCountry])
-        .map((item) => ({
+        .filter(
+          (item: ProjectMapRecord): item is ProjectMapRecord & { jointCountry: string } =>
+            Boolean(item.jointCountry && JOINT_COUNTRY_COORDINATES[item.jointCountry]),
+        )
+        .map((item: ProjectMapRecord & { jointCountry: string }) => ({
           id: `project-${item.id}`,
-          country: item.jointCountry as string,
-          ...JOINT_COUNTRY_COORDINATES[item.jointCountry as string],
+          country: item.jointCountry,
+          ...JOINT_COUNTRY_COORDINATES[item.jointCountry],
           articleTitle: item.title,
           href: `/projects/${item.slug}`,
           articleType: item.lifecycleStatus,
@@ -228,11 +271,14 @@ export class AnalyticsService {
           summary: item.abstract ?? 'Joint project collaboration record.',
         })),
       ...groups
-        .filter((item) => item.jointCountry && JOINT_COUNTRY_COORDINATES[item.jointCountry])
-        .map((item) => ({
+        .filter(
+          (item: GroupMapRecord): item is GroupMapRecord & { jointCountry: string } =>
+            Boolean(item.jointCountry && JOINT_COUNTRY_COORDINATES[item.jointCountry]),
+        )
+        .map((item: GroupMapRecord & { jointCountry: string }) => ({
           id: `group-${item.id}`,
-          country: item.jointCountry as string,
-          ...JOINT_COUNTRY_COORDINATES[item.jointCountry as string],
+          country: item.jointCountry,
+          ...JOINT_COUNTRY_COORDINATES[item.jointCountry],
           articleTitle: item.name,
           href: `/groups/${item.slug}`,
           articleType: 'Research Group',

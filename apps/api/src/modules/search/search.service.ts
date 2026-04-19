@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SearchQueryDto } from './dto/search-query.dto';
 
@@ -11,6 +12,30 @@ type SearchDocument = {
   description: string;
   meta: string;
 };
+
+type ResearcherSearchRecord = Prisma.ResearcherProfileGetPayload<{
+  include: { department: true };
+}>;
+
+type PublicationSearchRecord = Prisma.PublicationGetPayload<{
+  include: { department: true };
+}>;
+
+type ProjectSearchRecord = Prisma.ProjectGetPayload<{
+  include: { department: true };
+}>;
+
+type GroupSearchRecord = Prisma.ResearchGroupGetPayload<{
+  include: { department: true };
+}>;
+
+type ThesisSearchRecord = Prisma.ThesisGetPayload<{
+  include: { department: true };
+}>;
+
+type DepartmentSearchRecord = Prisma.DepartmentGetPayload<Record<string, never>>;
+
+type NewsSearchRecord = Prisma.NewsItemGetPayload<Record<string, never>>;
 
 @Injectable()
 export class SearchService {
@@ -162,7 +187,7 @@ export class SearchService {
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
 
-    return items.map((item) => ({
+    return items.map((item: ResearcherSearchRecord) => ({
       id: item.id,
       type: 'researcher',
       title: `${item.firstName} ${item.lastName}`,
@@ -196,7 +221,7 @@ export class SearchService {
       orderBy: [{ publicationDate: 'desc' }, { createdAt: 'desc' }],
     });
 
-    return items.map((item) => ({
+    return items.map((item: PublicationSearchRecord) => ({
       id: item.id,
       type: 'publication',
       title: item.title,
@@ -225,7 +250,7 @@ export class SearchService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return items.map((item) => ({
+    return items.map((item: ProjectSearchRecord) => ({
       id: item.id,
       type: 'project',
       title: item.title,
@@ -252,7 +277,7 @@ export class SearchService {
       orderBy: { name: 'asc' },
     });
 
-    return items.map((item) => ({
+    return items.map((item: GroupSearchRecord) => ({
       id: item.id,
       type: 'group',
       title: item.name,
@@ -281,7 +306,7 @@ export class SearchService {
       orderBy: { submissionDate: 'desc' },
     });
 
-    return items.map((item) => ({
+    return items.map((item: ThesisSearchRecord) => ({
       id: item.id,
       type: 'thesis',
       title: item.title,
@@ -306,7 +331,7 @@ export class SearchService {
       orderBy: { name: 'asc' },
     });
 
-    return items.map((item) => ({
+    return items.map((item: DepartmentSearchRecord) => ({
       id: item.id,
       type: 'department',
       title: item.name,
@@ -334,7 +359,7 @@ export class SearchService {
       orderBy: { publishedAt: 'desc' },
     });
 
-    return items.map((item) => ({
+    return items.map((item: NewsSearchRecord) => ({
       id: item.id,
       type: 'news',
       title: item.title,

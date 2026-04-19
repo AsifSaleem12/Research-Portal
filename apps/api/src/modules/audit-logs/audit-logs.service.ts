@@ -25,7 +25,7 @@ export class AuditLogsService {
         action: input.action,
         entityType: input.entityType,
         entityId: input.entityId,
-        metadata: input.metadata as Prisma.InputJsonValue | undefined,
+        metadata: input.metadata as Prisma.AuditLogCreateInput['metadata'],
         ipAddress: input.ipAddress,
         userAgent: input.userAgent,
       },
