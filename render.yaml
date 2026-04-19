@@ -3,7 +3,7 @@ services:
     name: research-portal-api
     runtime: node
     rootDir: apps/api
-    buildCommand: cd ../.. && corepack pnpm install --frozen-lockfile && corepack pnpm --filter api build
+    buildCommand: cd ../.. && corepack pnpm install --frozen-lockfile && corepack pnpm --filter api exec prisma migrate deploy && corepack pnpm --filter api build
     startCommand: cd ../.. && corepack pnpm --filter api start
     plan: free
     envVars:
