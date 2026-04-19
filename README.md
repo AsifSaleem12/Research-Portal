@@ -107,6 +107,12 @@ Or run both with:
 corepack pnpm dev
 ```
 
+## Vercel Deployment
+
+- Deploy the frontend from the `apps/web` root directory.
+- Do not use `turbo run build` as a Vercel build override for this project.
+- The Vercel project should build using the config in `apps/web/vercel.json`.
+
 ## Test URLs
 
 - Frontend: `http://localhost:3000`
