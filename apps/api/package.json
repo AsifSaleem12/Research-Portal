@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('tsconfig.build.tsbuildinfo',{force:true});\" && nest start --watch",
-    "build": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('tsconfig.build.tsbuildinfo',{force:true});\" && nest build",
+    "build": "prisma generate --schema=prisma/schema.prisma && node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('tsconfig.build.tsbuildinfo',{force:true});\" && nest build",
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "jest",
