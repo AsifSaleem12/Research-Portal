@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const JOINT_COUNTRY_COORDINATES: Record<string, { x: number; y: number }> = {
@@ -10,41 +9,41 @@ const JOINT_COUNTRY_COORDINATES: Record<string, { x: number; y: number }> = {
   Malaysia: { x: 629, y: 226 },
 };
 
-type PublicationMapRecord = Prisma.PublicationGetPayload<{
-  select: {
-    id: true;
-    title: true;
-    slug: true;
-    abstract: true;
-    jointCountry: true;
-    publicationType: true;
-    year: true;
-    publicationDate: true;
-  };
-}>;
+type PublicationMapRecord = {
+  id: string;
+  title: string;
+  slug: string;
+  abstract: string | null;
+  jointCountry: string | null;
+  publicationType: string;
+  year: number | null;
+  publicationDate: Date | null;
+};
 
-type ProjectMapRecord = Prisma.ProjectGetPayload<{
-  select: {
-    id: true;
-    title: true;
-    slug: true;
-    abstract: true;
-    jointCountry: true;
-    lifecycleStatus: true;
-    createdAt: true;
-  };
-}>;
+type ProjectMapRecord = {
+  id: string;
+  title: string;
+  slug: string;
+  abstract: string | null;
+  jointCountry: string | null;
+  lifecycleStatus: string;
+  createdAt: Date;
+};
 
-type GroupMapRecord = Prisma.ResearchGroupGetPayload<{
-  select: {
-    id: true;
-    name: true;
-    slug: true;
-    description: true;
-    jointCountry: true;
-    createdAt: true;
-  };
-}>;
+type GroupMapRecord = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  jointCountry: string | null;
+  createdAt: Date;
+};
+
+function hasMappedJointCountry<T extends { jointCountry: string | null }>(
+  item: T,
+): item is T & { jointCountry: string } {
+  return Boolean(item.jointCountry && JOINT_COUNTRY_COORDINATES[item.jointCountry]);
+}
 
 @Injectable()
 export class AnalyticsService {
@@ -235,12 +234,12 @@ export class AnalyticsService {
     ]);
 
     return [
-      ...publications
-        .filter(
-          (item: PublicationMapRecord): item is PublicationMapRecord & { jointCountry: string } =>
-            Boolean(item.jointCountry && JOINT_COUNTRY_COORDINATES[item.jointCountry]),
-        )
-        .map((item: PublicationMapRecord & { jointCountry: string }) => ({
+      ...publications.flatMap((item) => {
+        if (!hasMappedJointCountry(item)) {
+          return [];
+        }
+
+        return [{
           id: `publication-${item.id}`,
           country: item.jointCountry,
           ...JOINT_COUNTRY_COORDINATES[item.jointCountry],
@@ -253,13 +252,14 @@ export class AnalyticsService {
             item.publicationDate?.getUTCFullYear().toString() ??
             new Date().getUTCFullYear().toString(),
           summary: item.abstract ?? 'Joint publication collaboration record.',
-        })),
-      ...projects
-        .filter(
-          (item: ProjectMapRecord): item is ProjectMapRecord & { jointCountry: string } =>
-            Boolean(item.jointCountry && JOINT_COUNTRY_COORDINATES[item.jointCountry]),
-        )
-        .map((item: ProjectMapRecord & { jointCountry: string }) => ({
+        }];
+      }),
+      ...projects.flatMap((item) => {
+        if (!hasMappedJointCountry(item)) {
+          return [];
+        }
+
+        return [{
           id: `project-${item.id}`,
           country: item.jointCountry,
           ...JOINT_COUNTRY_COORDINATES[item.jointCountry],
@@ -269,13 +269,14 @@ export class AnalyticsService {
           partnerInstitution: 'International Project Collaboration',
           year: item.createdAt.getUTCFullYear().toString(),
           summary: item.abstract ?? 'Joint project collaboration record.',
-        })),
-      ...groups
-        .filter(
-          (item: GroupMapRecord): item is GroupMapRecord & { jointCountry: string } =>
-            Boolean(item.jointCountry && JOINT_COUNTRY_COORDINATES[item.jointCountry]),
-        )
-        .map((item: GroupMapRecord & { jointCountry: string }) => ({
+        }];
+      }),
+      ...groups.flatMap((item) => {
+        if (!hasMappedJointCountry(item)) {
+          return [];
+        }
+
+        return [{
           id: `group-${item.id}`,
           country: item.jointCountry,
           ...JOINT_COUNTRY_COORDINATES[item.jointCountry],
@@ -285,7 +286,8 @@ export class AnalyticsService {
           partnerInstitution: 'International Group Collaboration',
           year: item.createdAt.getUTCFullYear().toString(),
           summary: item.description ?? 'Joint research group collaboration record.',
-        })),
+        }];
+      }),
     ];
   }
 }

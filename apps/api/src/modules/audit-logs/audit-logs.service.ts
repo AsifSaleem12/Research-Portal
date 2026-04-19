@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { getPagination, toPaginatedResult } from '../../common/utils/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueryAuditLogsDto } from './dto/query-audit-logs.dto';
@@ -25,7 +24,7 @@ export class AuditLogsService {
         action: input.action,
         entityType: input.entityType,
         entityId: input.entityId,
-        metadata: input.metadata as Prisma.AuditLogCreateInput['metadata'],
+        metadata: input.metadata as Record<string, unknown> | undefined as never,
         ipAddress: input.ipAddress,
         userAgent: input.userAgent,
       },

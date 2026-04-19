@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SearchQueryDto } from './dto/search-query.dto';
 
@@ -13,29 +12,66 @@ type SearchDocument = {
   meta: string;
 };
 
-type ResearcherSearchRecord = Prisma.ResearcherProfileGetPayload<{
-  include: { department: true };
-}>;
+type ResearcherSearchRecord = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  slug: string;
+  expertiseSummary: string | null;
+  biography: string | null;
+  designation: string | null;
+};
 
-type PublicationSearchRecord = Prisma.PublicationGetPayload<{
-  include: { department: true };
-}>;
+type PublicationSearchRecord = {
+  id: string;
+  title: string;
+  slug: string;
+  abstract: string | null;
+  journalName: string | null;
+  conferenceName: string | null;
+};
 
-type ProjectSearchRecord = Prisma.ProjectGetPayload<{
-  include: { department: true };
-}>;
+type ProjectSearchRecord = {
+  id: string;
+  title: string;
+  slug: string;
+  abstract: string | null;
+  fundingAgency: string | null;
+};
 
-type GroupSearchRecord = Prisma.ResearchGroupGetPayload<{
-  include: { department: true };
-}>;
+type GroupSearchRecord = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+};
 
-type ThesisSearchRecord = Prisma.ThesisGetPayload<{
-  include: { department: true };
-}>;
+type ThesisSearchRecord = {
+  id: string;
+  title: string;
+  slug: string;
+  abstract: string | null;
+  degreeLevel: string;
+  department: {
+    name: string;
+  } | null;
+};
 
-type DepartmentSearchRecord = Prisma.DepartmentGetPayload<Record<string, never>>;
+type DepartmentSearchRecord = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+};
 
-type NewsSearchRecord = Prisma.NewsItemGetPayload<Record<string, never>>;
+type NewsSearchRecord = {
+  id: string;
+  title: string;
+  slug: string;
+  summary: string | null;
+  content: string;
+  category: string;
+};
 
 @Injectable()
 export class SearchService {
