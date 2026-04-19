@@ -234,7 +234,7 @@ export class AnalyticsService {
     ]);
 
     return [
-      ...publications.flatMap((item) => {
+      ...publications.flatMap((item: PublicationMapRecord) => {
         if (!hasMappedJointCountry(item)) {
           return [];
         }
@@ -254,7 +254,7 @@ export class AnalyticsService {
           summary: item.abstract ?? 'Joint publication collaboration record.',
         }];
       }),
-      ...projects.flatMap((item) => {
+      ...projects.flatMap((item: ProjectMapRecord) => {
         if (!hasMappedJointCountry(item)) {
           return [];
         }
@@ -271,7 +271,7 @@ export class AnalyticsService {
           summary: item.abstract ?? 'Joint project collaboration record.',
         }];
       }),
-      ...groups.flatMap((item) => {
+      ...groups.flatMap((item: GroupMapRecord) => {
         if (!hasMappedJointCountry(item)) {
           return [];
         }
