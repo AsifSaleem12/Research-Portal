@@ -119,6 +119,7 @@ corepack pnpm dev
 - The API now reads `PORT` from the host environment, so platforms like Render and Railway can bind it correctly.
 - A ready-to-use Render config is included in `render.yaml`.
 - The Render build now runs `prisma migrate deploy` automatically so a fresh hosted database gets the required tables before the API starts.
+- On first backend startup, an empty database is automatically seeded with the demo dataset and admin login. Existing databases are left untouched.
 - After the API is deployed, set `NEXT_PUBLIC_API_BASE_URL` in the Vercel frontend project to:
   `https://your-api-domain/api`
 - Then redeploy the frontend on Vercel.
