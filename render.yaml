@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: research-portal-api
+    runtime: node
+    rootDir: apps/api
+    buildCommand: cd ../.. && corepack pnpm install --frozen-lockfile && corepack pnpm --filter api build
+    startCommand: cd ../.. && corepack pnpm --filter api start
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_ACCESS_TTL
+        value: 15m
+      - key: JWT_REFRESH_TTL
+        value: 7d
+      - key: MEILISEARCH_HOST
+        sync: false
+      - key: MEILISEARCH_API_KEY
+        sync: false
+      - key: FILE_STORAGE_DRIVER
+        value: local
+      - key: FILE_STORAGE_LOCAL_ROOT
+        value: ./uploads

@@ -113,6 +113,15 @@ corepack pnpm dev
 - Do not use `turbo run build` as a Vercel build override for this project.
 - The Vercel project should build using the config in `apps/web/vercel.json`.
 
+## Backend Deployment
+
+- Deploy `apps/api` as a separate Node service.
+- The API now reads `PORT` from the host environment, so platforms like Render and Railway can bind it correctly.
+- A ready-to-use Render config is included in `render.yaml`.
+- After the API is deployed, set `NEXT_PUBLIC_API_BASE_URL` in the Vercel frontend project to:
+  `https://your-api-domain/api`
+- Then redeploy the frontend on Vercel.
+
 ## Test URLs
 
 - Frontend: `http://localhost:3000`
