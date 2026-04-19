@@ -9,17 +9,22 @@ export class PrismaBootstrapService implements OnApplicationBootstrap {
   constructor(private readonly prisma: PrismaService) {}
 
   async onApplicationBootstrap() {
-    const [roleCount, userCount] = await Promise.all([
-      this.prisma.role.count(),
-      this.prisma.user.count(),
-    ]);
+    try {
+      const [roleCount, userCount] = await Promise.all([
+        this.prisma.role.count(),
+        this.prisma.user.count(),
+      ]);
 
-    if (roleCount > 0 || userCount > 0) {
-      return;
+      if (roleCount > 0 || userCount > 0) {
+        return;
+      }
+
+      this.logger.log('Empty database detected. Seeding demo data.');
+      await seedDemoData(this.prisma);
+      this.logger.log('Demo data seed completed.');
+    } catch (error) {
+      const message = error instanceof Error ? error.stack ?? error.message : String(error);
+      this.logger.error(`Demo data seed skipped due to startup error: ${message}`);
     }
-
-    this.logger.log('Empty database detected. Seeding demo data.');
-    await seedDemoData(this.prisma);
-    this.logger.log('Demo data seed completed.');
   }
 }
