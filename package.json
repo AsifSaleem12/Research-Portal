@@ -5,7 +5,7 @@
   "packageManager": "pnpm@9.12.3",
   "scripts": {
     "dev": "turbo run dev --parallel",
-    "build": "turbo run build",
+    "build": "corepack pnpm --filter api build && corepack pnpm --filter web build",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "format": "turbo run format",
