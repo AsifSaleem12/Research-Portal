@@ -1,0 +1,578 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  INACTIVE
+}
+
+enum WorkflowStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ProjectLifecycleStatus {
+  PROPOSED
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum PublicationType {
+  JOURNAL_ARTICLE
+  CONFERENCE_PAPER
+  PROCEEDING
+  BOOK
+  BOOK_CHAPTER
+  REPORT
+  PATENT
+  DATASET
+  OTHER
+}
+
+enum ThesisDegreeLevel {
+  BS
+  MS
+  MPHIL
+  PHD
+  OTHER
+}
+
+enum NewsCategory {
+  NEWS
+  EVENT
+  ACTIVITY
+  ANNOUNCEMENT
+}
+
+enum FileAssetKind {
+  PROFILE_PHOTO
+  PUBLICATION_PDF
+  THESIS_PDF
+  NEWS_IMAGE
+  DATASET_FILE
+  DOCUMENT
+  OTHER
+}
+
+enum StorageDriver {
+  LOCAL
+  S3
+  MINIO
+}
+
+enum ExternalLinkType {
+  DOI
+  ORCID
+  GOOGLE_SCHOLAR
+  SCOPUS
+  WEBSITE
+  DATASET
+  YOUTUBE
+  OTHER
+}
+
+enum ResearcherRelationType {
+  PROFILE
+  PUBLICATION
+  PROJECT
+  THESIS
+  GROUP
+  DATASET
+}
+
+model Role {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String?
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model User {
+  id                String              @id @default(cuid())
+  name              String
+  email             String              @unique
+  passwordHash      String
+  refreshTokenHash  String?
+  roleId            String
+  role              Role                @relation(fields: [roleId], references: [id])
+  status            UserStatus          @default(ACTIVE)
+  researcherProfile ResearcherProfile?
+  studentProfile    StudentProfile?
+  auditLogs         AuditLog[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+}
+
+model Faculty {
+  id          String               @id @default(cuid())
+  name        String
+  slug        String               @unique
+  description String?
+  departments Department[]
+  researchers ResearcherProfile[]
+  projects    Project[]
+  theses      Thesis[]
+  groups      ResearchGroup[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model Department {
+  id          String              @id @default(cuid())
+  name        String
+  slug        String              @unique
+  description String?
+  facultyId   String?
+  faculty     Faculty?            @relation(fields: [facultyId], references: [id])
+  researchers ResearcherProfile[]
+  students    StudentProfile[]
+  groups      ResearchGroup[]
+  projects    Project[]
+  publications Publication[]
+  theses      Thesis[]
+  newsItems   NewsItem[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model ResearcherProfile {
+  id                   String                     @id @default(cuid())
+  userId               String                     @unique
+  user                 User                       @relation(fields: [userId], references: [id])
+  employeeId           String?                    @unique
+  firstName            String
+  lastName             String
+  slug                 String                     @unique
+  designation          String?
+  biography            String?
+  profilePhoto         String?
+  qualifications       String?
+  expertiseSummary     String?
+  orcid                String?
+  googleScholar        String?
+  scopusId             String?
+  departmentId         String?
+  department           Department?                @relation(fields: [departmentId], references: [id])
+  facultyId            String?
+  faculty              Faculty?                   @relation(fields: [facultyId], references: [id])
+  leadGroups           ResearchGroup[]            @relation("ResearchGroupLead")
+  groupMemberships     GroupMember[]
+  principalProjects    Project[]                  @relation("PrincipalInvestigator")
+  projectMemberships   ProjectMember[]
+  publicationAuthorships PublicationAuthor[]
+  supervisedTheses     Thesis[]                   @relation("ThesisSupervisor")
+  coSupervisedTheses   Thesis[]                   @relation("ThesisCoSupervisor")
+  researchAreas        ResearcherResearchArea[]
+  awards               AwardPrize[]
+  datasets             Dataset[]
+  facilities           FacilityEquipment[]
+  externalLinks        ExternalLink[]
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+
+  @@index([departmentId])
+  @@index([facultyId])
+  @@index([lastName, firstName])
+}
+
+model StudentProfile {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id])
+  registrationNo String?   @unique
+  firstName      String
+  lastName       String
+  departmentId   String?
+  department     Department? @relation(fields: [departmentId], references: [id])
+  theses         Thesis[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model ResearchGroup {
+  id               String        @id @default(cuid())
+  name             String
+  slug             String        @unique
+  description      String?
+  jointCountry     String?
+  departmentId     String?
+  department       Department?   @relation(fields: [departmentId], references: [id])
+  facultyId        String?
+  faculty          Faculty?      @relation(fields: [facultyId], references: [id])
+  leadResearcherId String?
+  leadResearcher   ResearcherProfile? @relation("ResearchGroupLead", fields: [leadResearcherId], references: [id])
+  members          GroupMember[]
+  projects         Project[]
+  publications     Publication[]
+  researchAreas    ResearchArea[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model GroupMember {
+  id           String            @id @default(cuid())
+  groupId       String
+  group         ResearchGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  researcherId  String
+  researcher    ResearcherProfile @relation(fields: [researcherId], references: [id], onDelete: Cascade)
+  role          String
+  joinedAt      DateTime          @default(now())
+
+  @@unique([groupId, researcherId])
+  @@index([researcherId])
+}
+
+model Project {
+  id                    String                @id @default(cuid())
+  title                 String
+  slug                  String                @unique
+  abstract              String?
+  jointCountry          String?
+  status                WorkflowStatus        @default(DRAFT)
+  lifecycleStatus       ProjectLifecycleStatus @default(PROPOSED)
+  startDate             DateTime?
+  endDate               DateTime?
+  fundingAgency         String?
+  budget                Decimal?              @db.Decimal(14, 2)
+  departmentId          String?
+  department            Department?           @relation(fields: [departmentId], references: [id])
+  facultyId             String?
+  faculty               Faculty?              @relation(fields: [facultyId], references: [id])
+  groupId               String?
+  group                 ResearchGroup?        @relation(fields: [groupId], references: [id])
+  principalInvestigatorId String?
+  principalInvestigator ResearcherProfile?    @relation("PrincipalInvestigator", fields: [principalInvestigatorId], references: [id])
+  members               ProjectMember[]
+  publications          Publication[]
+  externalLinks         ExternalLink[]
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([departmentId])
+  @@index([facultyId])
+  @@index([groupId])
+  @@index([status])
+}
+
+model ProjectMember {
+  id           String            @id @default(cuid())
+  projectId     String
+  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  researcherId  String
+  researcher    ResearcherProfile @relation(fields: [researcherId], references: [id], onDelete: Cascade)
+  role          String
+  isCoPi        Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+
+  @@unique([projectId, researcherId])
+  @@index([researcherId])
+}
+
+model Journal {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  issn          String?
+  publisher     String?
+  website       String?
+  publications  Publication[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Conference {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  acronym       String?
+  organizer     String?
+  website       String?
+  publications  Publication[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Publication {
+  id               String              @id @default(cuid())
+  title            String
+  slug             String              @unique
+  abstract         String?
+  jointCountry     String?
+  publicationType  PublicationType
+  journalName      String?
+  conferenceName   String?
+  publisher        String?
+  doi              String?             @unique
+  publicationDate  DateTime?
+  year             Int?
+  volume           String?
+  issue            String?
+  pages            String?
+  openAccess       Boolean             @default(false)
+  fileUrl          String?
+  status           WorkflowStatus      @default(DRAFT)
+  journalId        String?
+  journal          Journal?            @relation(fields: [journalId], references: [id])
+  conferenceId     String?
+  conference       Conference?         @relation(fields: [conferenceId], references: [id])
+  groupId          String?
+  group            ResearchGroup?      @relation(fields: [groupId], references: [id])
+  projectId        String?
+  project          Project?            @relation(fields: [projectId], references: [id])
+  departmentId     String?
+  department       Department?         @relation(fields: [departmentId], references: [id])
+  researchAreaId   String?
+  researchArea     ResearchArea?       @relation(fields: [researchAreaId], references: [id])
+  authors          PublicationAuthor[]
+  keywords         KeywordTag[]
+  datasets         Dataset[]
+  externalLinks    ExternalLink[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([status])
+  @@index([publicationDate])
+  @@index([year])
+  @@index([departmentId])
+}
+
+model PublicationAuthor {
+  id                 String             @id @default(cuid())
+  publicationId      String
+  publication        Publication        @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  researcherId       String?
+  researcher         ResearcherProfile? @relation(fields: [researcherId], references: [id])
+  externalAuthorName String?
+  authorOrder        Int
+  correspondingAuthor Boolean           @default(false)
+
+  @@index([publicationId, authorOrder])
+  @@index([researcherId])
+}
+
+model Thesis {
+  id              String             @id @default(cuid())
+  title           String
+  slug            String             @unique
+  abstract        String?
+  degreeLevel     ThesisDegreeLevel
+  studentName     String
+  studentId       String?
+  student         StudentProfile?    @relation(fields: [studentId], references: [id])
+  supervisorId    String?
+  supervisor      ResearcherProfile? @relation("ThesisSupervisor", fields: [supervisorId], references: [id])
+  coSupervisorId  String?
+  coSupervisor    ResearcherProfile? @relation("ThesisCoSupervisor", fields: [coSupervisorId], references: [id])
+  departmentId    String?
+  department      Department?        @relation(fields: [departmentId], references: [id])
+  facultyId       String?
+  faculty         Faculty?           @relation(fields: [facultyId], references: [id])
+  submissionDate  DateTime?
+  fileUrl         String?
+  status          WorkflowStatus     @default(DRAFT)
+  researchAreaId  String?
+  researchArea    ResearchArea?      @relation(fields: [researchAreaId], references: [id])
+  externalLinks   ExternalLink[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([status])
+  @@index([submissionDate])
+}
+
+model ResearchArea {
+  id            String                    @id @default(cuid())
+  name          String
+  slug          String                    @unique
+  description   String?
+  researchers   ResearcherResearchArea[]
+  publications  Publication[]
+  theses        Thesis[]
+  groups        ResearchGroup[]
+  datasets      Dataset[]
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+}
+
+model ResearcherResearchArea {
+  researcherId    String
+  researchAreaId  String
+  researcher      ResearcherProfile @relation(fields: [researcherId], references: [id], onDelete: Cascade)
+  researchArea    ResearchArea      @relation(fields: [researchAreaId], references: [id], onDelete: Cascade)
+
+  @@id([researcherId, researchAreaId])
+}
+
+model KeywordTag {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  slug          String         @unique
+  publications  Publication[]
+  datasets      Dataset[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model NewsItem {
+  id             String          @id @default(cuid())
+  title          String
+  slug           String          @unique
+  summary        String?
+  content        String
+  featuredImage  String?
+  publishedAt    DateTime?
+  category       NewsCategory    @default(NEWS)
+  status         WorkflowStatus  @default(DRAFT)
+  departmentId   String?
+  department     Department?     @relation(fields: [departmentId], references: [id])
+  eventActivities EventActivity[]
+  mediaMentions  MediaMention[]
+  externalLinks  ExternalLink[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([status])
+  @@index([publishedAt])
+}
+
+model EventActivity {
+  id          String         @id @default(cuid())
+  title       String
+  slug        String         @unique
+  summary     String?
+  description String?
+  eventDate   DateTime?
+  location    String?
+  status      WorkflowStatus @default(DRAFT)
+  newsItemId  String?
+  newsItem    NewsItem?      @relation(fields: [newsItemId], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model MediaMention {
+  id            String         @id @default(cuid())
+  title         String
+  outlet        String?
+  mentionDate   DateTime?
+  url           String?
+  status        WorkflowStatus @default(DRAFT)
+  newsItemId    String?
+  newsItem      NewsItem?      @relation(fields: [newsItemId], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model AwardPrize {
+  id            String             @id @default(cuid())
+  title         String
+  issuer        String?
+  awardDate     DateTime?
+  description   String?
+  researcherId  String
+  researcher    ResearcherProfile  @relation(fields: [researcherId], references: [id], onDelete: Cascade)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model Dataset {
+  id              String          @id @default(cuid())
+  title           String
+  slug            String          @unique
+  description     String?
+  doi             String?         @unique
+  publicationId   String?
+  publication     Publication?    @relation(fields: [publicationId], references: [id])
+  researcherId    String?
+  researcher      ResearcherProfile? @relation(fields: [researcherId], references: [id])
+  researchAreaId  String?
+  researchArea    ResearchArea?   @relation(fields: [researchAreaId], references: [id])
+  fileUrl         String?
+  status          WorkflowStatus  @default(DRAFT)
+  keywords        KeywordTag[]
+  externalLinks   ExternalLink[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model FacilityEquipment {
+  id            String             @id @default(cuid())
+  name          String
+  slug          String             @unique
+  description   String?
+  location      String?
+  researcherId  String?
+  researcher    ResearcherProfile? @relation(fields: [researcherId], references: [id])
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model FileAsset {
+  id            String          @id @default(cuid())
+  originalName  String
+  storedName    String
+  mimeType      String
+  extension     String?
+  sizeBytes     Int
+  path          String
+  url           String?
+  kind          FileAssetKind   @default(DOCUMENT)
+  storageDriver StorageDriver   @default(LOCAL)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model ExternalLink {
+  id             String                  @id @default(cuid())
+  label          String?
+  type           ExternalLinkType        @default(WEBSITE)
+  url            String
+  researcherId   String?
+  researcher     ResearcherProfile?      @relation(fields: [researcherId], references: [id])
+  projectId      String?
+  project        Project?                @relation(fields: [projectId], references: [id])
+  publicationId  String?
+  publication    Publication?            @relation(fields: [publicationId], references: [id])
+  thesisId       String?
+  thesis         Thesis?                 @relation(fields: [thesisId], references: [id])
+  newsItemId     String?
+  newsItem       NewsItem?               @relation(fields: [newsItemId], references: [id])
+  datasetId      String?
+  dataset        Dataset?                @relation(fields: [datasetId], references: [id])
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String?
+  actor       User?    @relation(fields: [actorId], references: [id])
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
