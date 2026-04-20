@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
-  getApiBaseUrl,
+  fetchApiResponse,
   getApiErrorMessage,
   parseBackendAuthPayload,
 } from '../../../../lib/admin-auth';
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   let response: Response;
 
   try {
-    response = await fetch(`${getApiBaseUrl()}/auth/login`, {
+    response = await fetchApiResponse('/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -23,7 +23,6 @@ export async function POST(request: Request) {
         email: body.email ?? '',
         password: body.password ?? '',
       }),
-      cache: 'no-store',
     });
   } catch {
     return NextResponse.json(

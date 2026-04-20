@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import {
   ADMIN_ACCESS_COOKIE,
   ADMIN_REFRESH_COOKIE,
-  getApiBaseUrl,
+  fetchApiResponse,
 } from '../../../../../lib/admin-auth';
 
 export async function POST(request: Request) {
@@ -12,12 +12,11 @@ export async function POST(request: Request) {
   const secureCookies = shouldUseSecureCookies(request.url);
 
   if (accessToken) {
-    await fetch(`${getApiBaseUrl()}/auth/logout`, {
+    await fetchApiResponse('/auth/logout', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
-      cache: 'no-store',
     }).catch(() => null);
   }
 

@@ -31,8 +31,11 @@ export class ResearchersController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(APP_ROLES.PORTAL_ADMIN, APP_ROLES.SUPER_ADMIN)
-  async create(@Body() dto: CreateResearcherDto) {
-    return successResponse(await this.researchersService.create(dto), 'Researcher created.');
+  async create(
+    @Body() dto: CreateResearcherDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return successResponse(await this.researchersService.create(dto, actor), 'Researcher created.');
   }
 
   @Patch(':id')

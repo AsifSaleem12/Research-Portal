@@ -1,8 +1,9 @@
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateResearcherDto {
+  @IsOptional()
   @IsString()
-  userId!: string;
+  userId?: string;
 
   @IsOptional()
   @IsString()
@@ -55,4 +56,3 @@ export class CreateResearcherDto {
   @IsOptional()
   researchAreaIds?: string[];
 }
-

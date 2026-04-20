@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getApiBaseUrl, getApiErrorMessage } from '../../../../lib/admin-auth';
+import { fetchApiResponse, getApiErrorMessage } from '../../../../lib/admin-auth';
 
 export async function POST(request: Request) {
   const body = (await request.json()) as {
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   let response: Response;
 
   try {
-    response = await fetch(`${getApiBaseUrl()}/auth/forgot-password`, {
+    response = await fetchApiResponse('/auth/forgot-password', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -19,7 +19,6 @@ export async function POST(request: Request) {
         email: body.email ?? '',
         newPassword: body.newPassword ?? '',
       }),
-      cache: 'no-store',
     });
   } catch {
     return NextResponse.json(

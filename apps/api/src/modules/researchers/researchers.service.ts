@@ -1,20 +1,26 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { APP_ROLES } from '../../common/constants/roles';
 import type { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
 import { getPagination, toPaginatedResult } from '../../common/utils/pagination';
 import { slugify } from '../../common/utils/slug';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { CreateResearcherDto } from './dto/create-researcher.dto';
 import { QueryResearchersDto } from './dto/query-researchers.dto';
 import { UpdateResearcherDto } from './dto/update-researcher.dto';
 
 @Injectable()
 export class ResearchersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
   async findAll(query: QueryResearchersDto) {
     const { skip, take, page, pageSize } = getPagination(query);
@@ -114,10 +120,12 @@ export class ResearchersService {
     return researcher;
   }
 
-  async create(dto: CreateResearcherDto) {
-    return this.prisma.researcherProfile.create({
+  async create(dto: CreateResearcherDto, actor: AuthenticatedUser) {
+    const userId = dto.userId ?? (await this.createLinkedResearcherUser(dto));
+
+    const researcher = await this.prisma.researcherProfile.create({
       data: {
-        userId: dto.userId,
+        userId,
         employeeId: dto.employeeId,
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -146,6 +154,19 @@ export class ResearchersService {
         faculty: true,
       },
     });
+
+    await this.auditLogsService.create({
+      actorId: actor.userId,
+      action: 'researcher.create',
+      entityType: 'ResearcherProfile',
+      entityId: researcher.id,
+      metadata: {
+        researcherName: `${researcher.firstName} ${researcher.lastName}`,
+        linkedUserId: researcher.userId,
+      },
+    });
+
+    return researcher;
   }
 
   async update(id: string, dto: UpdateResearcherDto, actor: AuthenticatedUser) {
@@ -224,5 +245,49 @@ export class ResearchersService {
     });
 
     return { id };
+  }
+
+  private async createLinkedResearcherUser(dto: CreateResearcherDto) {
+    const researcherRole = await this.prisma.role.findUnique({
+      where: { name: APP_ROLES.RESEARCHER },
+    });
+
+    if (!researcherRole) {
+      throw new BadRequestException('Researcher role is not configured.');
+    }
+
+    const email = await this.generateUniqueResearcherEmail(dto.firstName, dto.lastName);
+    const passwordHash = await bcrypt.hash(`${email}-${Date.now()}`, 10);
+
+    const user = await this.prisma.user.create({
+      data: {
+        name: `${dto.firstName} ${dto.lastName}`.trim(),
+        email,
+        passwordHash,
+        roleId: researcherRole.id,
+        status: 'ACTIVE',
+      },
+    });
+
+    return user.id;
+  }
+
+  private async generateUniqueResearcherEmail(firstName: string, lastName: string) {
+    const baseSlug = slugify(`${firstName} ${lastName}`) || `researcher-${Date.now()}`;
+    let suffix = 0;
+
+    while (true) {
+      const candidate = `${baseSlug}${suffix ? `-${suffix}` : ''}@researcher.local`;
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: candidate },
+        select: { id: true },
+      });
+
+      if (!existingUser) {
+        return candidate;
+      }
+
+      suffix += 1;
+    }
   }
 }

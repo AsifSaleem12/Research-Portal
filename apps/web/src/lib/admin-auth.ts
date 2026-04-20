@@ -49,6 +49,45 @@ export function getApiBaseUrl() {
   return process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api';
 }
 
+export function getServerApiBaseUrls() {
+  const configuredBaseUrl = process.env.INTERNAL_API_BASE_URL ?? getApiBaseUrl();
+  const candidates = [configuredBaseUrl];
+
+  try {
+    const url = new URL(configuredBaseUrl);
+
+    if (url.hostname === 'localhost') {
+      candidates.push(buildApiBaseUrl(url, '127.0.0.1'));
+    } else if (url.hostname === '127.0.0.1') {
+      candidates.push(buildApiBaseUrl(url, 'localhost'));
+    }
+  } catch {
+    return candidates;
+  }
+
+  return [...new Set(candidates)];
+}
+
+export async function fetchApiResponse(
+  path: string,
+  init: RequestInit = {},
+) {
+  let lastError: unknown;
+
+  for (const baseUrl of getServerApiBaseUrls()) {
+    try {
+      return await fetch(`${baseUrl}${path}`, {
+        ...init,
+        cache: init.cache ?? 'no-store',
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError ?? new Error(`Unable to reach backend API for ${path}.`);
+}
+
 export function isAdminRole(role: string) {
   return ADMIN_ROLES.includes(role as AdminRole);
 }
@@ -163,4 +202,10 @@ function decodeBase64Url(value: string) {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
   const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
   return atob(padded);
+}
+
+function buildApiBaseUrl(url: URL, hostname: string) {
+  const clonedUrl = new URL(url.toString());
+  clonedUrl.hostname = hostname;
+  return clonedUrl.toString().replace(/\/$/, '');
 }

@@ -29,27 +29,133 @@ type JointCountryMapApiResponse = {
   }[];
 };
 
-export async function getHomePageData() {
-  const liveJointMapPoints = await fetch(`${getApiBaseUrl()}/analytics/joint-country-map`, {
-    cache: 'no-store',
-  })
-    .then(async (response) => {
-      if (!response.ok) {
-        return null;
-      }
+type ApiEnvelope<T> = {
+  data?: T;
+};
 
-      const payload = (await response.json()) as JointCountryMapApiResponse;
-      return payload.data ?? null;
-    })
-    .catch(() => null);
+type PaginatedApiResponse<T> = ApiEnvelope<{
+  data?: T[];
+}>;
+
+type LiveResearcher = {
+  id: string;
+  slug: string;
+  firstName: string;
+  lastName: string;
+  designation?: string | null;
+  expertiseSummary?: string | null;
+  biography?: string | null;
+  user?: {
+    email?: string | null;
+  } | null;
+  department?: {
+    slug?: string | null;
+    name?: string | null;
+  } | null;
+  faculty?: {
+    name?: string | null;
+  } | null;
+  researchAreas?: { researchArea?: { name?: string | null } | null }[];
+  _count?: {
+    publicationAuthorships?: number;
+    principalProjects?: number;
+  };
+  createdAt?: string;
+};
+
+type LivePublication = {
+  id: string;
+  slug: string;
+  title: string;
+  abstract?: string | null;
+  publicationType?: string | null;
+  doi?: string | null;
+  publicationDate?: string | null;
+  createdAt?: string;
+  department?: {
+    slug?: string | null;
+  } | null;
+  researchArea?: {
+    name?: string | null;
+  } | null;
+  journal?: {
+    name?: string | null;
+  } | null;
+  conference?: {
+    name?: string | null;
+  } | null;
+  journalName?: string | null;
+  conferenceName?: string | null;
+  authors?: {
+    researcher?: {
+      slug?: string | null;
+    } | null;
+  }[];
+};
+
+type LiveProject = {
+  id: string;
+  slug: string;
+  title: string;
+  abstract?: string | null;
+  fundingAgency?: string | null;
+  lifecycleStatus?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  budget?: string | number | null;
+  createdAt?: string;
+  department?: {
+    slug?: string | null;
+  } | null;
+  principalInvestigator?: {
+    slug?: string | null;
+  } | null;
+  members?: {
+    researcher?: {
+      slug?: string | null;
+    } | null;
+  }[];
+  publications?: {
+    slug?: string | null;
+  }[];
+  researchArea?: {
+    name?: string | null;
+  } | null;
+};
+
+export async function getHomePageData() {
+  const [liveJointMapPoints, liveResearchers, livePublications, liveProjects] = await Promise.all([
+    fetchPortalData<JointCountryMapApiResponse['data']>('/analytics/joint-country-map'),
+    fetchPortalCollection<LiveResearcher>('/researchers?pageSize=100'),
+    fetchPortalCollection<LivePublication>('/publications?pageSize=5'),
+    fetchPortalCollection<LiveProject>('/projects?pageSize=5'),
+  ]);
+
+  const recentResearchers = liveResearchers?.length
+    ? [...liveResearchers]
+        .sort((a, b) => +new Date(b.createdAt ?? 0) - +new Date(a.createdAt ?? 0))
+        .slice(0, 5)
+        .map(mapLiveResearcher)
+    : researchers.filter((item) => item.featured).slice(0, 5);
+
+  const recentPublications = livePublications?.length
+    ? livePublications.slice(0, 5).map(mapLivePublication)
+    : [...publications]
+        .sort((a, b) => +new Date(b.publicationDate) - +new Date(a.publicationDate))
+        .slice(0, 5);
+
+  const recentProjects = liveProjects?.length
+    ? liveProjects.slice(0, 5).map(mapLiveProject)
+    : [...projects]
+        .sort((a, b) => +new Date(b.startDate) - +new Date(a.startDate))
+        .slice(0, 5);
 
   return {
-    featuredResearchers: researchers.filter((item) => item.featured).slice(0, 3),
+    featuredResearchers: recentResearchers,
     featuredGroups: groups.slice(0, 3),
-    recentPublications: [...publications]
-      .sort((a, b) => +new Date(b.publicationDate) - +new Date(a.publicationDate))
-      .slice(0, 3),
-    ongoingProjects: projects.filter((item) => item.status === 'Active').slice(0, 3),
+    recentPublications: recentPublications,
+    recentProjects: recentProjects,
+    ongoingProjects: recentProjects,
     statistics: [
       { label: 'Researchers', value: '50+' },
       { label: 'Publications', value: '275+' },
@@ -61,6 +167,133 @@ export async function getHomePageData() {
     opportunities: joinResearchOpportunities,
     jointArticleMapPoints: liveJointMapPoints?.length ? liveJointMapPoints : jointArticleMapPoints,
   };
+}
+
+async function fetchPortalData<T>(path: string) {
+  return fetch(`${getApiBaseUrl()}${path}`, {
+    next: { revalidate: 60 },
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        return null;
+      }
+
+      const payload = (await response.json()) as ApiEnvelope<T>;
+      return payload.data ?? null;
+    })
+    .catch(() => null);
+}
+
+async function fetchPortalCollection<T>(path: string) {
+  return fetch(`${getApiBaseUrl()}${path}`, {
+    next: { revalidate: 60 },
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        return null;
+      }
+
+      const payload = (await response.json()) as PaginatedApiResponse<T>;
+      return payload.data?.data ?? null;
+    })
+    .catch(() => null);
+}
+
+function mapLiveResearcher(researcher: LiveResearcher) {
+  return {
+    id: researcher.id,
+    slug: researcher.slug,
+    firstName: researcher.firstName,
+    lastName: researcher.lastName,
+    designation: researcher.designation ?? 'Researcher',
+    departmentSlug: researcher.department?.slug ?? '',
+    faculty: researcher.faculty?.name ?? 'LGU',
+    expertiseSummary: researcher.expertiseSummary ?? 'Research profile available on the portal.',
+    biography: researcher.biography ?? '',
+    researchAreas:
+      researcher.researchAreas
+        ?.map((item) => item.researchArea?.name)
+        .filter((item): item is string => Boolean(item)) ?? [],
+    email: researcher.user?.email ?? '',
+    featured: false,
+    stats: {
+      publications: researcher._count?.publicationAuthorships ?? 0,
+      projects: researcher._count?.principalProjects ?? 0,
+      citationsLabel: 'New profile',
+    },
+  };
+}
+
+function mapLivePublication(publication: LivePublication) {
+  return {
+    id: publication.id,
+    slug: publication.slug,
+    title: publication.title,
+    abstract: publication.abstract ?? '',
+    publicationType: formatEnumLabel(publication.publicationType ?? 'OTHER'),
+    journalOrConference:
+      publication.journal?.name ??
+      publication.conference?.name ??
+      publication.journalName ??
+      publication.conferenceName ??
+      'Publication record',
+    doi: publication.doi ?? '',
+    publicationDate: publication.publicationDate ?? publication.createdAt ?? '',
+    departmentSlug: publication.department?.slug ?? '',
+    authorSlugs:
+      publication.authors
+        ?.map((author) => author.researcher?.slug)
+        .filter((slug): slug is string => Boolean(slug)) ?? [],
+    researchAreas: publication.researchArea?.name ? [publication.researchArea.name] : [],
+    openAccess: false,
+  };
+}
+
+function mapLiveProject(project: LiveProject) {
+  return {
+    id: project.id,
+    slug: project.slug,
+    title: project.title,
+    abstract: project.abstract ?? '',
+    departmentSlug: project.department?.slug ?? '',
+    status: formatProjectStatus(project.lifecycleStatus),
+    fundingAgency: project.fundingAgency ?? 'LGU Research',
+    budgetLabel:
+      typeof project.budget === 'number' || typeof project.budget === 'string'
+        ? String(project.budget)
+        : 'Budget on request',
+    principalInvestigatorSlug: project.principalInvestigator?.slug ?? '',
+    members:
+      project.members
+        ?.map((member) => member.researcher?.slug)
+        .filter((slug): slug is string => Boolean(slug)) ?? [],
+    researchAreas: project.researchArea?.name ? [project.researchArea.name] : [],
+    publicationSlugs:
+      project.publications
+        ?.map((publication) => publication.slug)
+        .filter((slug): slug is string => Boolean(slug)) ?? [],
+    startDate: project.startDate ?? '',
+    endDate: project.endDate ?? '',
+  };
+}
+
+function formatEnumLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function formatProjectStatus(value?: string | null) {
+  switch (value) {
+    case 'ACTIVE':
+      return 'Active';
+    case 'COMPLETED':
+      return 'Completed';
+    default:
+      return 'Proposed';
+  }
 }
 
 export function getResearchers(filter?: { q?: string; department?: string; area?: string }) {

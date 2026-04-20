@@ -51,7 +51,7 @@ export function isAdminResourceName(value: string): value is AdminResourceName {
   return value in adminResourceEndpoints;
 }
 
-function buildHeaders() {
+export function getAdminApiHeaders() {
   const accessToken = cookies().get(ADMIN_ACCESS_COOKIE)?.value;
 
   if (!accessToken) {
@@ -69,7 +69,7 @@ export async function proxyAdminApiRequest(
   path: string,
   init?: RequestInit,
 ) {
-  const headers = buildHeaders();
+  const headers = getAdminApiHeaders();
 
   if (!headers) {
     return NextResponse.json({ message: 'Not authenticated.' }, { status: 401 });

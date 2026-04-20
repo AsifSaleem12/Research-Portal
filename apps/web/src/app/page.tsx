@@ -4,6 +4,8 @@ import { SearchHero } from '../components/shared/search-hero';
 import { SectionHeading } from '../components/shared/section-heading';
 import { getHomePageData } from '../lib/portal-data';
 
+export const revalidate = 60;
+
 export default async function HomePage() {
   const data = await getHomePageData();
 
@@ -19,9 +21,9 @@ export default async function HomePage() {
         <SectionHeading
           eyebrow="Featured Researchers"
           title="Researcher Profiles"
-          description="Selected faculty profiles and current areas of expertise."
+          description="Latest researcher profiles and current areas of expertise."
         />
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-5">
           {data.featuredResearchers.map((researcher) => (
             <EntityCard
               key={researcher.id}
@@ -76,6 +78,27 @@ export default async function HomePage() {
               />
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="container-shell mt-14 space-y-6 sm:mt-16">
+        <SectionHeading
+          eyebrow="Latest Projects"
+          title="Recent Projects"
+          description="Newest project records published to the portal."
+        />
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-5">
+          {data.recentProjects.map((project) => (
+            <EntityCard
+              key={project.id}
+              href={`/projects/${project.slug}`}
+              eyebrow={project.status}
+              title={project.title}
+              description={project.abstract}
+              meta={project.fundingAgency}
+              tags={project.researchAreas}
+            />
+          ))}
         </div>
       </section>
 

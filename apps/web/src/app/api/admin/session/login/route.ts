@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import {
   ADMIN_ACCESS_COOKIE,
   ADMIN_REFRESH_COOKIE,
-  getApiBaseUrl,
+  fetchApiResponse,
   getApiErrorMessage,
   isAdminRole,
   parseBackendAuthPayload,
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   let response: Response;
 
   try {
-    response = await fetch(`${getApiBaseUrl()}/auth/login`, {
+    response = await fetchApiResponse('/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -24,7 +24,6 @@ export async function POST(request: Request) {
         email: body.email ?? '',
         password: body.password ?? '',
       }),
-      cache: 'no-store',
     });
   } catch {
     return NextResponse.json(
